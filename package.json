@@ -1,0 +1,34 @@
+{
+  "name": "race-draw",
+  "version": "0.1.0",
+  "private": true,
+  "description": "3D lottery / random-draw app — participants race on a track; the winner is the draw. Extensible to roulette and ladder (Amidakuji) modes.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "^0.185.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.185.0",
+    "eslint": "^9.36.0",
+    "eslint-config-next": "^16.2.9",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.6"
+  }
+}
