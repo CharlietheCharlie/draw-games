@@ -35,12 +35,12 @@ interface AvatarData {
 const WINNER_ACTIONS: AvatarAction[] = ['cheer', 'dance', 'robot'];
 const LOSER_ACTIONS: AvatarAction[] = ['sad', 'kneel', 'facepalm'];
 
-/** Which animation a runner plays, by phase + finishing rank (0-based). */
+/** Which animation a runner plays, by phase + finishing rank (0-based). Only the
+ *  winner celebrates; everyone else is a loser (no happy 2nd/3rd). */
 function runnerAction(phase: string, rank: number, id: string): AvatarAction {
   if (phase === 'setup') return 'idle';
   if (phase === 'running' || phase === 'countdown') return 'run';
   if (rank === 0) return WINNER_ACTIONS[hashSeed(id) % WINNER_ACTIONS.length]!;
-  if (rank <= 2) return 'clap'; // podium runners-up applaud
   return LOSER_ACTIONS[hashSeed(id) % LOSER_ACTIONS.length]!;
 }
 

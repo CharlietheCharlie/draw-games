@@ -144,10 +144,10 @@ export function Avatar({
     // Legs (seated avatars keep their folded JSX pose — don't touch them).
     if (!seated) {
       if (action === 'kneel') {
-        rot(hipL, 0.15, 0, 0.05);
-        rot(hipR, 0.15, 0, -0.05);
-        rot(kneeL, 1.9);
-        rot(kneeR, 1.9);
+        rot(hipL, 0.35, 0, 0.05);
+        rot(hipR, 0.35, 0, -0.05);
+        rot(kneeL, 2.0);
+        rot(kneeR, 2.0);
       } else if (action === 'dance') {
         const d = Math.sin(t * 3.2);
         rot(hipL, Math.max(0, d) * 0.35);
@@ -258,11 +258,12 @@ export function Avatar({
         break;
       }
       case 'kneel': {
-        rot(shoulderL, 0.25, 0, 0.12);
-        rot(shoulderR, 0.25, 0, -0.12);
-        rot(elbowL, -0.25);
-        rot(elbowR, -0.25);
-        bodyPose(0.5, 0, 0, seated ? 0 : -0.35);
+        // Collapsed on the knees, both hands braced on the ground, head bowed.
+        rot(shoulderL, -1.4, 0, 0.16);
+        rot(shoulderR, -1.4, 0, -0.16);
+        rot(elbowL, -0.06);
+        rot(elbowR, -0.06);
+        bodyPose(0.72, 0, 0, seated ? 0 : -0.5);
         break;
       }
       case 'sad': {
