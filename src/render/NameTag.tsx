@@ -19,7 +19,7 @@ export interface NameTagProps {
 
 export function NameTag({ name, color, y, rank }: NameTagProps) {
   return (
-    <Html position={[0, y, 0]} center distanceFactor={11} zIndexRange={[20, 0]} prepend>
+    <Html position={[0, y, 0]} center distanceFactor={17} zIndexRange={[20, 0]} prepend>
       <div
         style={{
           pointerEvents: 'none',
@@ -27,16 +27,16 @@ export function NameTag({ name, color, y, rank }: NameTagProps) {
           whiteSpace: 'nowrap',
           display: 'flex',
           alignItems: 'center',
-          gap: 4,
-          padding: '2px 8px',
+          gap: 7,
+          padding: '6px 14px 6px 11px',
           borderRadius: 999,
           fontFamily: 'system-ui, sans-serif',
-          fontSize: 14,
-          fontWeight: 600,
+          fontSize: 22,
+          fontWeight: 800,
           color: '#0b0b0f',
-          background: 'rgba(255,255,255,0.9)',
-          borderLeft: `4px solid ${color}`,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+          background: 'rgba(255,255,255,0.96)',
+          borderLeft: `7px solid ${color}`,
+          boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
           transform: 'translateY(-50%)',
         }}
       >
@@ -46,12 +46,13 @@ export function NameTag({ name, color, y, rank }: NameTagProps) {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              minWidth: 18,
-              height: 18,
+              minWidth: 28,
+              height: 28,
               borderRadius: 999,
               background: color,
               color: '#fff',
-              fontSize: 11,
+              fontSize: 16,
+              fontWeight: 800,
             }}
           >
             {rank}

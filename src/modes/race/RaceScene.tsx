@@ -14,8 +14,9 @@ import type { ModeSceneProps } from '@/core/mode/GameMode';
 import { pointAtU, laneRadius } from '@/core/geometry/stadium';
 import { generateAvatar, type AvatarDescriptor } from '@/core/character/descriptor';
 import { LANE_COLORS } from '@/core/character/palettes';
+import { hashSeed } from '@/core/rng/prng';
 import { useDrawStore } from '@/store/useDrawStore';
-import { Avatar } from '@/render/Avatar';
+import { Avatar, type AvatarAction } from '@/render/Avatar';
 import { NameTag } from '@/render/NameTag';
 import { StadiumEnv } from '@/shell/StadiumEnv';
 import { Jumbotron } from '@/shell/Jumbotron';
@@ -30,6 +31,18 @@ interface AvatarData {
   color: string;
 }
 
+const WINNER_ACTIONS: AvatarAction[] = ['cheer', 'dance', 'robot'];
+const LOSER_ACTIONS: AvatarAction[] = ['sad', 'kneel', 'facepalm'];
+
+/** Which animation a runner plays, by phase + finishing rank (0-based). */
+function runnerAction(phase: string, rank: number, id: string): AvatarAction {
+  if (phase === 'setup') return 'idle';
+  if (phase === 'running' || phase === 'countdown') return 'run';
+  if (rank === 0) return WINNER_ACTIONS[hashSeed(id) % WINNER_ACTIONS.length]!;
+  if (rank <= 2) return 'clap'; // podium runners-up applaud
+  return LOSER_ACTIONS[hashSeed(id) % LOSER_ACTIONS.length]!;
+}
+
 function Runner({
   view,
   state,
@@ -37,7 +50,7 @@ function Runner({
   name,
   color,
   rank,
-  cheer,
+  action,
   showTag,
   paused,
 }: {
@@ -47,7 +60,7 @@ function Runner({
   name: string;
   color: string;
   rank?: number;
-  cheer?: boolean;
+  action: AvatarAction;
   showTag: boolean;
   paused: boolean;
 }) {
@@ -67,7 +80,7 @@ function Runner({
 
   return (
     <group ref={group}>
-      <Avatar descriptor={descriptor} gaitRef={gait} cheer={cheer} paused={paused} />
+      <Avatar descriptor={descriptor} action={action} gaitRef={gait} paused={paused} />
       {showTag && <NameTag name={name} color={color} y={2.35} rank={rank} />}
     </group>
   );
@@ -180,7 +193,7 @@ export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceSta
             name={a.name}
             color={a.color}
             rank={phase === 'result' ? rank + 1 : undefined}
-            cheer={phase === 'result' && rank === 0}
+            action={runnerAction(phase, rank, a.id)}
             showTag={phase !== 'result'}
             paused={paused}
           />

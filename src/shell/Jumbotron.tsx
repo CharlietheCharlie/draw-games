@@ -75,18 +75,18 @@ export function Jumbotron({ state, position, width = 22 }: JumbotronProps) {
       <perspectiveCamera ref={cam} fov={40} near={0.5} far={700} />
       <group ref={board} position={position} rotation={[0, yaw, 0]}>
         {[-width / 2 + 1.5, width / 2 - 1.5].map((x, i) => (
-          <mesh key={i} position={[x, -py / 2, -0.6]}>
+          <mesh key={i} position={[x, -py / 2, -0.6]} userData={{ occluder: true }}>
             <boxGeometry args={[1.3, py, 1.3]} />
-            <meshStandardMaterial color="#3a4048" />
+            <meshStandardMaterial color="#3a4048" transparent />
           </mesh>
         ))}
-        <mesh position={[0, 0, -0.35]}>
+        <mesh position={[0, 0, -0.35]} userData={{ occluder: true }}>
           <boxGeometry args={[width + 1.8, height + 1.8, 0.7]} />
-          <meshStandardMaterial color="#12151b" />
+          <meshStandardMaterial color="#12151b" transparent />
         </mesh>
-        <mesh>
+        <mesh userData={{ occluder: true }}>
           <planeGeometry args={[width, height]} />
-          <meshBasicMaterial map={fbo.texture} toneMapped={false} />
+          <meshBasicMaterial map={fbo.texture} toneMapped={false} transparent />
         </mesh>
       </group>
     </>

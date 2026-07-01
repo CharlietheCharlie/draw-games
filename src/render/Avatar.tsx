@@ -24,17 +24,35 @@ const ELBOW_BASE = 0.4;
 const ELBOW_FLEX = 0.5;
 const LEAN = 0.12;
 
+/**
+ * A character animation. `run` is gait-driven; the rest are looping emotes for
+ * spectating, celebrating, or losing.
+ */
+export type AvatarAction =
+  | 'run'
+  | 'idle'
+  | 'cheer' // arms up, waving, hops
+  | 'clap' // clapping
+  | 'wave' // one-arm wave
+  | 'dance' // groovy sway
+  | 'robot' // stiff robot moves
+  | 'kneel' // drop to knees, head down
+  | 'sad' // slumped, dejected
+  | 'facepalm'; // hands to head
+
 export interface AvatarProps {
   descriptor: AvatarDescriptor;
-  /** Live gait source in [0,1]; read each frame, no re-render. Preferred. */
+  /** Current animation. Defaults to `run`. */
+  action?: AvatarAction;
+  /** Live gait source in [0,1] for `run`; read each frame, no re-render. */
   gaitRef?: RefObject<number>;
-  /** Static gait when no ref is supplied (e.g. a showcase/podium pose). */
+  /** Static gait when no ref is supplied. */
   gait?: number;
-  /** Play a celebratory victory pose (winner on the podium). */
-  cheer?: boolean;
+  /** Per-character time offset (seconds) so a crowd's emotes desync. */
+  offset?: number;
   /** Freeze the current pose (race paused). */
   paused?: boolean;
-  /** Static seated pose (a spectator) — no run animation. */
+  /** Seated pose (a spectator): legs stay folded; arms still emote. */
   seated?: boolean;
   /** Whether the avatar casts shadows (spectators skip this for performance). */
   castShadow?: boolean;
@@ -70,9 +88,10 @@ function Limb({ segment, shadow }: { segment: { len: number; w: number; d: numbe
 
 export function Avatar({
   descriptor,
+  action = 'run',
   gaitRef,
   gait = 0,
-  cheer = false,
+  offset = 0,
   paused = false,
   seated = false,
   castShadow = true,
@@ -91,45 +110,147 @@ export function Avatar({
   const phase = useRef(0);
 
   useFrame((st, delta) => {
-    if (paused || seated) return; // hold the current pose
-    const g = THREE.MathUtils.clamp(gaitRef?.current ?? gait, 0, 1);
+    if (paused) return; // hold the current pose
 
-    if (cheer) {
-      // Victory: arms up, waving, little hops.
-      const t = st.clock.elapsedTime;
-      const wave = Math.sin(t * 9) * 0.25;
-      if (shoulderL.current) shoulderL.current.rotation.set(-2.5 + wave, 0, 0.4);
-      if (shoulderR.current) shoulderR.current.rotation.set(-2.5 - wave, 0, -0.4);
-      if (elbowL.current) elbowL.current.rotation.x = -0.3;
-      if (elbowR.current) elbowR.current.rotation.x = -0.3;
-      if (hipL.current) hipL.current.rotation.x = 0.2;
-      if (hipR.current) hipR.current.rotation.x = 0.2;
-      if (kneeL.current) kneeL.current.rotation.x = 0.3;
-      if (kneeR.current) kneeR.current.rotation.x = 0.3;
+    const rot = (ref: RefObject<THREE.Group | null>, x: number, y = 0, z = 0) => {
+      if (ref.current) ref.current.rotation.set(x, y, z);
+    };
+    const bodyPose = (rx: number, ry: number, rz: number, py: number) => {
       if (body.current) {
-        body.current.position.y = Math.abs(Math.sin(t * 6)) * 0.14;
-        body.current.rotation.x = 0;
+        body.current.rotation.set(rx, ry, rz);
+        body.current.position.y = py;
       }
+    };
+
+    // Gait-driven run (only meaningful while standing).
+    if (action === 'run' && !seated) {
+      const g = THREE.MathUtils.clamp(gaitRef?.current ?? gait, 0, 1);
+      phase.current += delta * STRIDES_PER_SEC * Math.PI * 2 * g;
+      const s = Math.sin(phase.current);
+      rot(hipL, s * THIGH_SWING * g);
+      rot(hipR, -s * THIGH_SWING * g);
+      rot(kneeL, KNEE_MAX * Math.max(0, -s) * g);
+      rot(kneeR, KNEE_MAX * Math.max(0, s) * g);
+      rot(shoulderL, -s * ARM_SWING * g, 0, 0.06);
+      rot(shoulderR, s * ARM_SWING * g, 0, -0.06);
+      rot(elbowL, -(ELBOW_BASE + ELBOW_FLEX * Math.max(0, -s)) * g);
+      rot(elbowR, -(ELBOW_BASE + ELBOW_FLEX * Math.max(0, s)) * g);
+      bodyPose(LEAN * g, 0, 0, Math.abs(s) * 0.05 * g);
       return;
     }
 
-    phase.current += delta * STRIDES_PER_SEC * Math.PI * 2 * g;
-    const p = phase.current;
-    const s = Math.sin(p);
+    const t = st.clock.elapsedTime + offset;
 
-    if (hipL.current) hipL.current.rotation.x = s * THIGH_SWING * g;
-    if (hipR.current) hipR.current.rotation.x = -s * THIGH_SWING * g;
-    if (kneeL.current) kneeL.current.rotation.x = KNEE_MAX * Math.max(0, -s) * g;
-    if (kneeR.current) kneeR.current.rotation.x = KNEE_MAX * Math.max(0, s) * g;
+    // Legs (seated avatars keep their folded JSX pose — don't touch them).
+    if (!seated) {
+      if (action === 'kneel') {
+        rot(hipL, 0.15, 0, 0.05);
+        rot(hipR, 0.15, 0, -0.05);
+        rot(kneeL, 1.9);
+        rot(kneeR, 1.9);
+      } else if (action === 'dance') {
+        const d = Math.sin(t * 3.2);
+        rot(hipL, Math.max(0, d) * 0.35);
+        rot(hipR, Math.max(0, -d) * 0.35);
+        rot(kneeL, Math.max(0, d) * 0.55);
+        rot(kneeR, Math.max(0, -d) * 0.55);
+      } else {
+        rot(hipL, 0);
+        rot(hipR, 0);
+        rot(kneeL, 0);
+        rot(kneeR, 0);
+      }
+    }
 
-    if (shoulderL.current) shoulderL.current.rotation.set(-s * ARM_SWING * g, 0, 0.06);
-    if (shoulderR.current) shoulderR.current.rotation.set(s * ARM_SWING * g, 0, -0.06);
-    if (elbowL.current) elbowL.current.rotation.x = -(ELBOW_BASE + ELBOW_FLEX * Math.max(0, -s)) * g;
-    if (elbowR.current) elbowR.current.rotation.x = -(ELBOW_BASE + ELBOW_FLEX * Math.max(0, s)) * g;
-
-    if (body.current) {
-      body.current.position.y = Math.abs(s) * 0.05 * g;
-      body.current.rotation.x = LEAN * g;
+    // Arms + body.
+    const hop = seated ? 0 : 1;
+    switch (action) {
+      case 'idle': {
+        const b = Math.sin(t * 1.6);
+        rot(shoulderL, b * 0.04, 0, 0.08);
+        rot(shoulderR, Math.sin(t * 1.6 + 1) * 0.04, 0, -0.08);
+        rot(elbowL, -0.12);
+        rot(elbowR, -0.12);
+        bodyPose(0, 0, 0, Math.abs(b) * 0.015 * hop);
+        break;
+      }
+      case 'cheer': {
+        const w = Math.sin(t * 9) * 0.35;
+        rot(shoulderL, -2.5 + w, 0, 0.4);
+        rot(shoulderR, -2.5 - w, 0, -0.4);
+        rot(elbowL, -0.3);
+        rot(elbowR, -0.3);
+        bodyPose(0, 0, 0, Math.abs(Math.sin(t * 6)) * 0.14 * hop);
+        break;
+      }
+      case 'clap': {
+        const c = Math.max(0, Math.sin(t * 11)) * 0.3;
+        rot(shoulderL, -1.15, 0, 0.34 + c);
+        rot(shoulderR, -1.15, 0, -0.34 - c);
+        rot(elbowL, -1.5);
+        rot(elbowR, -1.5);
+        bodyPose(0, 0, 0, Math.abs(Math.sin(t * 5)) * 0.03 * hop);
+        break;
+      }
+      case 'wave': {
+        const w = Math.sin(t * 7) * 0.45;
+        rot(shoulderR, -2.6, 0, -0.25 + w);
+        rot(elbowR, -0.2);
+        rot(shoulderL, 0.1, 0, 0.12);
+        rot(elbowL, -0.25);
+        bodyPose(0, 0, 0, Math.abs(Math.sin(t * 3)) * 0.02 * hop);
+        break;
+      }
+      case 'dance': {
+        const s3 = Math.sin(t * 3.2);
+        rot(shoulderL, s3 * 0.9 - 0.2, 0, 0.25);
+        rot(shoulderR, -s3 * 0.9 - 0.2, 0, -0.25);
+        rot(elbowL, -0.9);
+        rot(elbowR, -0.9);
+        bodyPose(0, s3 * 0.2, Math.sin(t * 1.6) * 0.14, Math.abs(Math.sin(t * 6.4)) * 0.05 * hop);
+        break;
+      }
+      case 'robot': {
+        const q = Math.round(Math.sin(t * 1.7) * 1.5) / 1.5;
+        const q2 = Math.round(Math.sin(t * 1.7 + Math.PI / 2) * 1.5) / 1.5;
+        rot(shoulderL, -1.5 + q * 0.8, 0, 0.1);
+        rot(shoulderR, -1.5 - q2 * 0.8, 0, -0.1);
+        rot(elbowL, -1.55);
+        rot(elbowR, -1.55);
+        bodyPose(0, (Math.round(Math.sin(t * 0.8) * 2) / 2) * 0.15, 0, 0);
+        break;
+      }
+      case 'kneel': {
+        rot(shoulderL, 0.25, 0, 0.12);
+        rot(shoulderR, 0.25, 0, -0.12);
+        rot(elbowL, -0.25);
+        rot(elbowR, -0.25);
+        bodyPose(0.5, 0, 0, seated ? 0 : -0.35);
+        break;
+      }
+      case 'sad': {
+        rot(shoulderL, 0.12, 0, 0.04);
+        rot(shoulderR, 0.12, 0, -0.04);
+        rot(elbowL, -0.1);
+        rot(elbowR, -0.1);
+        bodyPose(0.28, Math.sin(t * 1.1) * 0.05, 0, 0);
+        break;
+      }
+      case 'facepalm': {
+        rot(shoulderL, -2.55, 0, 0.55);
+        rot(shoulderR, -2.55, 0, -0.55);
+        rot(elbowL, -2.2);
+        rot(elbowR, -2.2);
+        bodyPose(0.14, 0, 0, 0);
+        break;
+      }
+      default: {
+        rot(shoulderL, 0, 0, 0.06);
+        rot(shoulderR, 0, 0, -0.06);
+        rot(elbowL, -0.1);
+        rot(elbowR, -0.1);
+        bodyPose(0, 0, 0, 0);
+      }
     }
   });
 

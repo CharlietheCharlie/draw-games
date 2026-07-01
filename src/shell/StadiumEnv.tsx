@@ -14,7 +14,9 @@ import { type StadiumDims, laneRadius, pathPoint, outlinePoints, pathLength } fr
 import { UNIT_BOX, TOON_GRADIENT } from '@/render/sharedGeometry';
 import { makeBowlGeometry } from '@/render/stadiumBuild';
 import { generateAvatar, type AvatarDescriptor } from '@/core/character/descriptor';
-import { Avatar } from '@/render/Avatar';
+import { Avatar, type AvatarAction } from '@/render/Avatar';
+
+const SPECTATOR_ACTIONS: AvatarAction[] = ['cheer', 'clap', 'wave', 'clap', 'cheer'];
 
 function lcg(seed: number): () => number {
   let s = seed >>> 0;
@@ -77,7 +79,14 @@ export function StadiumEnv({ dims, laneCount, night }: StadiumEnvProps) {
   // ---- Seated crowd on the rake (real avatar-style characters, sparse) ----
   const crowd = useMemo(() => {
     const rnd = lcg(99173);
-    const arr: Array<{ id: string; pos: [number, number, number]; yaw: number; descriptor: AvatarDescriptor }> = [];
+    const arr: Array<{
+      id: string;
+      pos: [number, number, number];
+      yaw: number;
+      descriptor: AvatarDescriptor;
+      action: AvatarAction;
+      offset: number;
+    }> = [];
     const N = 36;
     for (let i = 0; i < N; i++) {
       const u = rnd();
@@ -85,7 +94,14 @@ export function StadiumEnv({ dims, laneCount, night }: StadiumEnvProps) {
       const r = outerR + 2 + (outerR + 16 - (outerR + 2)) * tt;
       const y = 1.2 + (11 - 1.2) * tt;
       const p = pathPoint(S, r, u);
-      arr.push({ id: `spec-${i}`, pos: [p.x, y - 0.15, p.z], yaw: Math.atan2(-p.x, -p.z), descriptor: generateAvatar(`spectator-${i}`, 'crowd') });
+      arr.push({
+        id: `spec-${i}`,
+        pos: [p.x, y - 0.15, p.z],
+        yaw: Math.atan2(-p.x, -p.z),
+        descriptor: generateAvatar(`spectator-${i}`, 'crowd'),
+        action: SPECTATOR_ACTIONS[(rnd() * SPECTATOR_ACTIONS.length) | 0]!,
+        offset: rnd() * 4,
+      });
     }
     return arr;
   }, [S, outerR]);
@@ -150,7 +166,7 @@ export function StadiumEnv({ dims, laneCount, night }: StadiumEnvProps) {
       {/* Crowd (seated avatar-style spectators) */}
       {crowd.map((c) => (
         <group key={c.id} position={c.pos} rotation={[0, c.yaw, 0]}>
-          <Avatar descriptor={c.descriptor} seated castShadow={false} />
+          <Avatar descriptor={c.descriptor} seated action={c.action} offset={c.offset} castShadow={false} />
         </group>
       ))}
 
