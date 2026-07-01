@@ -10,10 +10,15 @@ import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { AdaptiveDpr } from '@react-three/drei';
 import { isWebGLAvailable } from '@/lib/webgl';
+import { silenceClockDeprecation } from '@/lib/silenceClockDeprecation';
 import { SceneBackdrop } from './SceneBackdrop';
 import { ActiveMode } from './ActiveMode';
 import { CameraRig } from './CameraRig';
 import { WebGLFallback } from './WebGLFallback';
+
+// Install before any <Canvas> mounts so R3F's internal `new THREE.Clock()`
+// doesn't spam the console with three's r183 deprecation warning.
+silenceClockDeprecation();
 
 export function Stage() {
   // Stage only renders on the client (its parent is dynamic ssr:false), so it's
