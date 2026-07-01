@@ -8,11 +8,13 @@
  * pools on the field (spotlights) and the lamp heads / windows glow.
  */
 import { useEffect, useMemo } from 'react';
-import { Line, Instances, Instance } from '@react-three/drei';
+import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { type StadiumDims, laneRadius, pathPoint, outlinePoints, pathLength } from '@/core/geometry/stadium';
 import { UNIT_BOX, TOON_GRADIENT } from '@/render/sharedGeometry';
 import { makeBowlGeometry } from '@/render/stadiumBuild';
+import { generateAvatar, type AvatarDescriptor } from '@/core/character/descriptor';
+import { Avatar } from '@/render/Avatar';
 
 function lcg(seed: number): () => number {
   let s = seed >>> 0;
@@ -21,11 +23,6 @@ function lcg(seed: number): () => number {
     return s / 4294967296;
   };
 }
-
-const CROWD_PALETTE = [
-  '#e6584a', '#f0a03c', '#f4d03f', '#5fb85f', '#4aa3e0',
-  '#6a6fd0', '#d060b0', '#e8e8e8', '#3a5a8a', '#c85a3a',
-];
 
 export interface StadiumEnvProps {
   dims: StadiumDims;
@@ -38,10 +35,11 @@ export function StadiumEnv({ dims, laneCount, night }: StadiumEnvProps) {
   const S = dims.straight;
 
   // ---- Materials ----
-  const seatMat = useMemo(() => new THREE.MeshToonMaterial({ color: '#41628c', gradientMap: TOON_GRADIENT, side: THREE.DoubleSide }), []);
-  const roofMat = useMemo(() => new THREE.MeshToonMaterial({ color: '#eef2f6', gradientMap: TOON_GRADIENT, side: THREE.DoubleSide }), []);
+  // seat/roof are tagged as occluders and can fade — start transparent-capable so
+  // toggling opacity never triggers a shader recompile.
+  const seatMat = useMemo(() => new THREE.MeshToonMaterial({ color: '#41628c', gradientMap: TOON_GRADIENT, side: THREE.DoubleSide, transparent: true }), []);
+  const roofMat = useMemo(() => new THREE.MeshToonMaterial({ color: '#eef2f6', gradientMap: TOON_GRADIENT, side: THREE.DoubleSide, transparent: true }), []);
   const concreteMat = useMemo(() => new THREE.MeshToonMaterial({ color: '#b9c0c9', gradientMap: TOON_GRADIENT }), []);
-  const crowdMat = useMemo(() => new THREE.MeshToonMaterial({ gradientMap: TOON_GRADIENT }), []);
   const lampMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#dfe6ef', emissive: new THREE.Color('#fff4d0'), emissiveIntensity: night ? 3 : 0.1 }),
     [night],
@@ -56,7 +54,7 @@ export function StadiumEnv({ dims, laneCount, night }: StadiumEnvProps) {
     [night],
   );
 
-  useEffect(() => () => { seatMat.dispose(); roofMat.dispose(); concreteMat.dispose(); crowdMat.dispose(); }, [seatMat, roofMat, concreteMat, crowdMat]);
+  useEffect(() => () => { seatMat.dispose(); roofMat.dispose(); concreteMat.dispose(); }, [seatMat, roofMat, concreteMat]);
   useEffect(() => () => lampMat.dispose(), [lampMat]);
   useEffect(() => () => buildingMat.dispose(), [buildingMat]);
 
@@ -76,18 +74,18 @@ export function StadiumEnv({ dims, laneCount, night }: StadiumEnvProps) {
     return rows;
   }, [S, outerR]);
 
-  // ---- Seated crowd on the rake ----
+  // ---- Seated crowd on the rake (real avatar-style characters, sparse) ----
   const crowd = useMemo(() => {
     const rnd = lcg(99173);
-    const arr: Array<{ pos: [number, number, number]; color: string; yaw: number }> = [];
-    const N = 520;
+    const arr: Array<{ id: string; pos: [number, number, number]; yaw: number; descriptor: AvatarDescriptor }> = [];
+    const N = 36;
     for (let i = 0; i < N; i++) {
       const u = rnd();
-      const tt = 0.12 + rnd() * 0.8;
+      const tt = 0.18 + rnd() * 0.66;
       const r = outerR + 2 + (outerR + 16 - (outerR + 2)) * tt;
       const y = 1.2 + (11 - 1.2) * tt;
       const p = pathPoint(S, r, u);
-      arr.push({ pos: [p.x, y + 0.28, p.z], color: CROWD_PALETTE[(rnd() * CROWD_PALETTE.length) | 0]!, yaw: Math.atan2(-p.x, -p.z) });
+      arr.push({ id: `spec-${i}`, pos: [p.x, y - 0.15, p.z], yaw: Math.atan2(-p.x, -p.z), descriptor: generateAvatar(`spectator-${i}`, 'crowd') });
     }
     return arr;
   }, [S, outerR]);
@@ -142,25 +140,25 @@ export function StadiumEnv({ dims, laneCount, night }: StadiumEnvProps) {
 
   return (
     <group>
-      {/* Grandstand + rows */}
-      <mesh geometry={bowlGeo} material={seatMat} receiveShadow dispose={null} />
+      {/* Grandstand + rows (occluder: fades when it blocks a runner) */}
+      <mesh geometry={bowlGeo} material={seatMat} receiveShadow dispose={null} userData={{ occluder: true }} />
       <mesh geometry={frontWallGeo} material={concreteMat} dispose={null} />
       {seatRows.map((pts, i) => (
         <Line key={i} points={pts} color="#33507a" lineWidth={1.5} transparent opacity={0.5} />
       ))}
 
-      {/* Crowd */}
-      <Instances limit={crowd.length} range={crowd.length} geometry={UNIT_BOX} material={crowdMat}>
-        {crowd.map((c, i) => (
-          <Instance key={i} position={c.pos} rotation={[0, c.yaw, 0]} scale={[0.34, 0.5, 0.3]} color={c.color} />
-        ))}
-      </Instances>
+      {/* Crowd (seated avatar-style spectators) */}
+      {crowd.map((c) => (
+        <group key={c.id} position={c.pos} rotation={[0, c.yaw, 0]}>
+          <Avatar descriptor={c.descriptor} seated castShadow={false} />
+        </group>
+      ))}
 
-      {/* Roofs + columns */}
-      <mesh geometry={roofMainGeo} material={roofMat} castShadow dispose={null} />
-      <mesh geometry={roofBackGeo} material={roofMat} castShadow dispose={null} />
+      {/* Roofs + columns (occluders) */}
+      <mesh geometry={roofMainGeo} material={roofMat} castShadow dispose={null} userData={{ occluder: true }} />
+      <mesh geometry={roofBackGeo} material={roofMat} castShadow dispose={null} userData={{ occluder: true }} />
       {roofColumns.map((c, i) => (
-        <mesh key={i} position={c.pos} material={roofMat} dispose={null}>
+        <mesh key={i} position={c.pos} material={roofMat} dispose={null} userData={{ occluder: true }}>
           <boxGeometry args={[0.5, c.h, 0.5]} />
         </mesh>
       ))}

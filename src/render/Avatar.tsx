@@ -34,10 +34,14 @@ export interface AvatarProps {
   cheer?: boolean;
   /** Freeze the current pose (race paused). */
   paused?: boolean;
+  /** Static seated pose (a spectator) — no run animation. */
+  seated?: boolean;
+  /** Whether the avatar casts shadows (spectators skip this for performance). */
+  castShadow?: boolean;
 }
 
 /** One static cube using the shared geometry + cached toon material. */
-function StaticCube({ c }: { c: Cube }) {
+function StaticCube({ c, shadow }: { c: Cube; shadow: boolean }) {
   return (
     <mesh
       geometry={c.sharp ? UNIT_BOX : UNIT_ROUNDED}
@@ -46,12 +50,12 @@ function StaticCube({ c }: { c: Cube }) {
       scale={c.size}
       rotation={c.rot}
       dispose={null}
-      castShadow
+      castShadow={shadow}
     />
   );
 }
 
-function Limb({ segment }: { segment: { len: number; w: number; d: number; color: string } }) {
+function Limb({ segment, shadow }: { segment: { len: number; w: number; d: number; color: string }; shadow: boolean }) {
   return (
     <mesh
       geometry={UNIT_ROUNDED}
@@ -59,12 +63,20 @@ function Limb({ segment }: { segment: { len: number; w: number; d: number; color
       position={[0, -segment.len / 2, 0]}
       scale={[segment.w, segment.len, segment.d]}
       dispose={null}
-      castShadow
+      castShadow={shadow}
     />
   );
 }
 
-export function Avatar({ descriptor, gaitRef, gait = 0, cheer = false, paused = false }: AvatarProps) {
+export function Avatar({
+  descriptor,
+  gaitRef,
+  gait = 0,
+  cheer = false,
+  paused = false,
+  seated = false,
+  castShadow = true,
+}: AvatarProps) {
   const build = useMemo(() => buildAvatar(descriptor), [descriptor]);
 
   const body = useRef<THREE.Group>(null);
@@ -79,7 +91,7 @@ export function Avatar({ descriptor, gaitRef, gait = 0, cheer = false, paused = 
   const phase = useRef(0);
 
   useFrame((st, delta) => {
-    if (paused) return; // hold the current pose
+    if (paused || seated) return; // hold the current pose
     const g = THREE.MathUtils.clamp(gaitRef?.current ?? gait, 0, 1);
 
     if (cheer) {
@@ -124,50 +136,50 @@ export function Avatar({ descriptor, gaitRef, gait = 0, cheer = false, paused = 
   return (
     <group ref={body}>
       {build.staticCubes.map((c, i) => (
-        <StaticCube key={i} c={c} />
+        <StaticCube key={i} c={c} shadow={castShadow} />
       ))}
 
       {/* Legs: hip → knee (thigh + shin + foot). */}
-      <group ref={hipL} position={[-build.legSpacingX, build.hipY, 0]}>
-        <Limb segment={build.thigh} />
-        <group ref={kneeL} position={[0, -build.thigh.len, 0]}>
-          <Limb segment={build.shin} />
+      <group ref={hipL} position={[-build.legSpacingX, build.hipY, 0]} rotation={seated ? [-1.4, 0, 0.05] : undefined}>
+        <Limb segment={build.thigh} shadow={castShadow} />
+        <group ref={kneeL} position={[0, -build.thigh.len, 0]} rotation={seated ? [1.5, 0, 0] : undefined}>
+          <Limb segment={build.shin} shadow={castShadow} />
           <mesh
             geometry={UNIT_ROUNDED}
             material={getToonMaterial(build.foot.color)}
             position={[0, -build.shin.len - build.foot.h / 2, build.foot.len / 2 - build.shin.d / 2]}
             scale={[build.foot.w, build.foot.h, build.foot.len]}
             dispose={null}
-            castShadow
+            castShadow={castShadow}
           />
         </group>
       </group>
-      <group ref={hipR} position={[build.legSpacingX, build.hipY, 0]}>
-        <Limb segment={build.thigh} />
-        <group ref={kneeR} position={[0, -build.thigh.len, 0]}>
-          <Limb segment={build.shin} />
+      <group ref={hipR} position={[build.legSpacingX, build.hipY, 0]} rotation={seated ? [-1.4, 0, -0.05] : undefined}>
+        <Limb segment={build.thigh} shadow={castShadow} />
+        <group ref={kneeR} position={[0, -build.thigh.len, 0]} rotation={seated ? [1.5, 0, 0] : undefined}>
+          <Limb segment={build.shin} shadow={castShadow} />
           <mesh
             geometry={UNIT_ROUNDED}
             material={getToonMaterial(build.foot.color)}
             position={[0, -build.shin.len - build.foot.h / 2, build.foot.len / 2 - build.shin.d / 2]}
             scale={[build.foot.w, build.foot.h, build.foot.len]}
             dispose={null}
-            castShadow
+            castShadow={castShadow}
           />
         </group>
       </group>
 
       {/* Arms: shoulder → elbow (upper arm + forearm). */}
       <group ref={shoulderL} position={[-build.armX, build.shoulderY, 0]}>
-        <Limb segment={build.upperArm} />
+        <Limb segment={build.upperArm} shadow={castShadow} />
         <group ref={elbowL} position={[0, -build.upperArm.len, 0]}>
-          <Limb segment={build.foreArm} />
+          <Limb segment={build.foreArm} shadow={castShadow} />
         </group>
       </group>
       <group ref={shoulderR} position={[build.armX, build.shoulderY, 0]}>
-        <Limb segment={build.upperArm} />
+        <Limb segment={build.upperArm} shadow={castShadow} />
         <group ref={elbowR} position={[0, -build.upperArm.len, 0]}>
-          <Limb segment={build.foreArm} />
+          <Limb segment={build.foreArm} shadow={castShadow} />
         </group>
       </group>
     </group>
