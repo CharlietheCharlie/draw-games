@@ -82,6 +82,7 @@ button:disabled {
   box-shadow: var(--shadow-lg);
   overflow-y: auto;
   z-index: 3;
+  transition: transform 0.32s ease, opacity 0.32s ease;
 }
 
 /* ---------- Brand ---------- */
@@ -431,9 +432,25 @@ input[type='text']:disabled {
   font-weight: 900;
   margin-top: 2px;
 }
+.rank-toggle {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  transition: border-color 0.15s, color 0.15s;
+}
+.rank-toggle:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
 .rank-list {
   list-style: none;
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -511,6 +528,12 @@ input[type='text']:disabled {
     bottom: auto;
     width: auto;
     max-height: 46vh;
+  }
+  /* Collapse the panel once the draw starts so it doesn't cover the race. */
+  .panel-card.collapsed {
+    transform: translateY(-120%);
+    opacity: 0;
+    pointer-events: none;
   }
   .result-card {
     top: auto;

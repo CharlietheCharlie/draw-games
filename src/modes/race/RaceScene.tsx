@@ -18,6 +18,7 @@ import { hashSeed } from '@/core/rng/prng';
 import { useDrawStore } from '@/store/useDrawStore';
 import { Avatar, type AvatarAction } from '@/render/Avatar';
 import { NameTag } from '@/render/NameTag';
+import { Confetti } from '@/render/Confetti';
 import { StadiumEnv } from '@/shell/StadiumEnv';
 import { Jumbotron } from '@/shell/Jumbotron';
 import { OvalTrack } from './OvalTrack';
@@ -198,12 +199,16 @@ export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceSta
 
   const avatars = useMemo<AvatarData[]>(
     () =>
-      participants.map((p) => ({
-        id: p.id,
-        name: p.name,
-        descriptor: generateAvatar(p.id, state.seed),
-        color: LANE_COLORS[p.lane % LANE_COLORS.length]!,
-      })),
+      participants.map((p) => {
+        const color = LANE_COLORS[p.lane % LANE_COLORS.length]!;
+        return {
+          id: p.id,
+          name: p.name,
+          // Clothing follows the lane colour; skin/hair/face stay random.
+          descriptor: generateAvatar(p.id, state.seed, color),
+          color,
+        };
+      }),
     [participants, state.seed],
   );
 
@@ -222,6 +227,7 @@ export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceSta
       <Jumbotron state={state} position={jumboPos} />
       <OcclusionFader state={state} />
       {winnerPt && <WinnerHighlight pos={[winnerPt.x, 0, winnerPt.z]} />}
+      {winnerPt && <Confetti origin={[winnerPt.x, 0, winnerPt.z]} />}
       {avatars.map((a) => {
         const view = viewById.get(a.id);
         if (!view) return null;

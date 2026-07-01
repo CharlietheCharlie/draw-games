@@ -41,7 +41,7 @@ export function Studio() {
         <HUD />
         <ResultOverlay />
       </main>
-      <aside className="panel-card">
+      <aside className={`panel-card${phase === 'setup' ? '' : ' collapsed'}`}>
         <div className="brand">
           <div className="logo">🏟️</div>
           <div>

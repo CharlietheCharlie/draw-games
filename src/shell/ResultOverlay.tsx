@@ -1,6 +1,8 @@
 'use client';
 
-/** The result card shown once the race resolves: winner, full order, replay. */
+/** The result card: winner front-and-centre; the full order is collapsed by
+ *  default and expands on tap. */
+import { useState } from 'react';
 import { useDrawStore } from '@/store/useDrawStore';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -8,14 +10,21 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export function ResultOverlay() {
   const phase = useDrawStore((s) => s.phase);
   const ranking = useDrawStore((s) => s.ranking);
+
+  if (phase !== 'result' || !ranking) return null;
+  // Key by the finishing order so each new race starts collapsed again.
+  return <ResultCard key={ranking.join('-')} ranking={ranking} />;
+}
+
+function ResultCard({ ranking }: { ranking: string[] }) {
   const participants = useDrawStore((s) => s.participants);
   const replay = useDrawStore((s) => s.replay);
   const reset = useDrawStore((s) => s.reset);
-
-  if (phase !== 'result' || !ranking) return null;
+  const [expanded, setExpanded] = useState(false);
 
   const nameOf = (id: string) => participants.find((p) => p.id === id)?.name ?? id;
   const winner = ranking[0];
+  const others = ranking.length - 1;
 
   return (
     <div className="hud">
@@ -26,15 +35,28 @@ export function ResultOverlay() {
           <div className="name">{winner ? nameOf(winner) : '—'}</div>
         </div>
 
-        <ol className="rank-list">
-          {ranking.map((id, i) => (
-            <li key={id} className={i === 0 ? 'top' : ''}>
-              <span className="rank-num">{i + 1}</span>
-              <span style={{ flex: 1 }}>{nameOf(id)}</span>
-              {i < 3 && <span>{MEDALS[i]}</span>}
-            </li>
-          ))}
-        </ol>
+        {others > 0 && (
+          <>
+            <button
+              className="rank-toggle"
+              onClick={() => setExpanded((e) => !e)}
+              aria-expanded={expanded}
+            >
+              {expanded ? '收合名次 ▴' : `完整名次（${ranking.length} 人）▾`}
+            </button>
+            {expanded && (
+              <ol className="rank-list">
+                {ranking.map((id, i) => (
+                  <li key={id} className={i === 0 ? 'top' : ''}>
+                    <span className="rank-num">{i + 1}</span>
+                    <span style={{ flex: 1 }}>{nameOf(id)}</span>
+                    {i < 3 && <span>{MEDALS[i]}</span>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </>
+        )}
 
         <div className="result-actions">
           <button className="btn btn-primary btn-block" onClick={replay}>

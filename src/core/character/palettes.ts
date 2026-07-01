@@ -28,6 +28,9 @@ export const ACCESSORY_COLOR = [
   '#ffffff', '#111111', '#e74c3c', '#f1c40f', '#3498db', '#2ecc71',
 ] as const;
 
+/** Neutral tones (grey / white / black) used to pair with a themed outfit. */
+export const NEUTRALS = ['#f4f5f7', '#d3d6dc', '#9298a2', '#5b606a', '#2c2f36'] as const;
+
 /** Lane colours — assigned by lane index so each runner's lane reads clearly. */
 export const LANE_COLORS = [
   '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
