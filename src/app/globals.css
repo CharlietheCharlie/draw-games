@@ -52,7 +52,8 @@ button:disabled {
 /* ---------- Layout ---------- */
 .studio {
   position: relative;
-  height: 100vh;
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh; /* track the *visible* viewport so bottom controls stay on-screen on mobile */
   width: 100vw;
   overflow: hidden;
 }
@@ -304,7 +305,7 @@ input[type='text']:disabled {
   display: flex;
   justify-content: center;
   gap: 10px;
-  padding-bottom: 26px;
+  padding-bottom: calc(26px + env(safe-area-inset-bottom));
   flex-wrap: wrap;
 }
 .cam-btns {
@@ -489,6 +490,7 @@ input[type='text']:disabled {
 /* ---------- Boot ---------- */
 .boot {
   height: 100vh;
+  height: 100dvh;
   display: grid;
   place-items: center;
   align-content: center;
