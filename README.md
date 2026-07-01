@@ -93,6 +93,10 @@ See [docs/ADDING_A_MODE.md](docs/ADDING_A_MODE.md). Short version: copy
 `src/modes/_template/`, implement `GameMode`, add one line to `registerAll.ts`.
 The roulette and ladder modes are stubbed as "即將推出" in the picker.
 
+For a full tour of every system (sim, camera, characters/emotes, stadium,
+jumbotron, occlusion fade, day/night, store) and a "what to tweak where" table,
+see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
+
 ## Tech
 
 Next.js 16 · React 19 · three 0.185 · @react-three/fiber 9 · @react-three/drei 10
