@@ -13,21 +13,12 @@ export function ParticipantPanel() {
   const remove = useDrawStore((s) => s.removeParticipant);
   const rename = useDrawStore((s) => s.renameParticipant);
   const clear = useDrawStore((s) => s.clearParticipants);
-  const seed = useDrawStore((s) => s.seed);
 
   const editable = phase === 'setup';
   const max = getMode(activeModeId).maxParticipants;
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div>
-        <p className="section-title">本場種子 Seed</p>
-        <div className="seed-chip">{seed}</div>
-        <p className="count-hint" style={{ marginTop: 6 }}>
-          每次開始都會自動換一組，確保每場結果都不同（可驗證公平性）
-        </p>
-      </div>
-
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <p className="section-title">參賽者 {participants.length}/{max}</p>

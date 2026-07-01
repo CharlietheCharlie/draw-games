@@ -20,11 +20,16 @@ export function HUD() {
   const togglePause = useDrawStore((s) => s.togglePause);
   const cameraShotKey = useDrawStore((s) => s.cameraShotKey);
   const setCameraShot = useDrawStore((s) => s.setCameraShot);
+  const night = useDrawStore((s) => s.timeOfDay === 'night');
+  const toggleTimeOfDay = useDrawStore((s) => s.toggleTimeOfDay);
 
   const canStart = participants.length >= 2;
 
   return (
     <div className="hud">
+      <button className="scene-toggle" onClick={toggleTimeOfDay} aria-label="切換日夜">
+        {night ? '🌙 夜晚' : '☀️ 白天'}
+      </button>
       <div className="hud-top">
         {phase === 'countdown' && countdown != null && <div className="countdown">{countdown}</div>}
         {phase === 'running' && paused && <div className="paused-badge">⏸ 已暫停</div>}

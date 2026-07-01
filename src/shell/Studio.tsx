@@ -10,7 +10,6 @@ import '@/modes/registerAll';
 import { useEffect } from 'react';
 import { useDrawStore } from '@/store/useDrawStore';
 import { Stage } from './Stage';
-import { ModePicker } from './ModePicker';
 import { ParticipantPanel } from './ParticipantPanel';
 import { HUD } from './HUD';
 import { ResultOverlay } from './ResultOverlay';
@@ -37,7 +36,12 @@ export function Studio() {
 
   return (
     <div className="studio">
-      <aside className="panel">
+      <main className="stage-area">
+        <Stage />
+        <HUD />
+        <ResultOverlay />
+      </main>
+      <aside className="panel-card">
         <div className="brand">
           <div className="logo">🏟️</div>
           <div>
@@ -45,14 +49,8 @@ export function Studio() {
             <p>一場公平的操場賽跑，跑第一的就是中籤者</p>
           </div>
         </div>
-        <ModePicker />
         <ParticipantPanel />
       </aside>
-      <main className="stage-area">
-        <Stage />
-        <HUD />
-        <ResultOverlay />
-      </main>
     </div>
   );
 }

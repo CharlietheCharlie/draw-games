@@ -32,6 +32,8 @@ export interface AvatarProps {
   gait?: number;
   /** Play a celebratory victory pose (winner on the podium). */
   cheer?: boolean;
+  /** Freeze the current pose (race paused). */
+  paused?: boolean;
 }
 
 /** One static cube using the shared geometry + cached toon material. */
@@ -62,7 +64,7 @@ function Limb({ segment }: { segment: { len: number; w: number; d: number; color
   );
 }
 
-export function Avatar({ descriptor, gaitRef, gait = 0, cheer = false }: AvatarProps) {
+export function Avatar({ descriptor, gaitRef, gait = 0, cheer = false, paused = false }: AvatarProps) {
   const build = useMemo(() => buildAvatar(descriptor), [descriptor]);
 
   const body = useRef<THREE.Group>(null);
@@ -77,6 +79,7 @@ export function Avatar({ descriptor, gaitRef, gait = 0, cheer = false }: AvatarP
   const phase = useRef(0);
 
   useFrame((st, delta) => {
+    if (paused) return; // hold the current pose
     const g = THREE.MathUtils.clamp(gaitRef?.current ?? gait, 0, 1);
 
     if (cheer) {

@@ -17,8 +17,8 @@ export const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
 /** Soft unit cube — the friendly, rounded body parts. */
 export const UNIT_ROUNDED = new RoundedBoxGeometry(1, 1, 1, 4, 0.16);
 
-/** A stepped gradient ramp → hard cel-shading bands. */
-const toonGradient = (() => {
+/** A stepped gradient ramp → hard cel-shading bands. Reusable for custom materials. */
+export const TOON_GRADIENT = (() => {
   const steps = 4;
   const data = new Uint8Array(steps);
   for (let i = 0; i < steps; i++) data[i] = Math.round((i / (steps - 1)) * 255);
@@ -36,7 +36,7 @@ const toonCache = new Map<string, THREE.MeshToonMaterial>();
 export function getToonMaterial(color: string): THREE.MeshToonMaterial {
   let mat = toonCache.get(color);
   if (!mat) {
-    mat = new THREE.MeshToonMaterial({ color, gradientMap: toonGradient });
+    mat = new THREE.MeshToonMaterial({ color, gradientMap: TOON_GRADIENT });
     toonCache.set(color, mat);
   }
   return mat;

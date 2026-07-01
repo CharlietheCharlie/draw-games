@@ -36,7 +36,9 @@ export function ActiveMode() {
     // Publish the render-interpolation factor so the Scene can lerp between
     // fixed steps and stay smooth at any refresh rate (kills the judder/tremble).
     const withAlpha = live as { alpha?: number };
-    if (phase !== 'running') {
+    // Pause freezes the SIMULATION only (positions hold); the render loop and
+    // camera keep running so the user can still look around.
+    if (phase !== 'running' || useDrawStore.getState().paused) {
       withAlpha.alpha = 1;
       return;
     }

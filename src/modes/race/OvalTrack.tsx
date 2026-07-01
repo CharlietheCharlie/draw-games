@@ -19,8 +19,8 @@ export interface OvalTrackProps {
 
 const OUTLINE_SEGMENTS = 140;
 
-const GRASS = '#6fae52';
-const CLAY = '#c8694a';
+const GRASS = '#5ba046';
+const TRACK = '#2f79b6';
 const KERB = '#f4f1e8';
 const ARCH = '#e5623c';
 const BUSH = '#57993f';
@@ -77,6 +77,29 @@ export function OvalTrack({ dims, laneCount }: OvalTrackProps) {
     return { cells, cell };
   }, [dims.laneWidth, innerR, trackWidth]);
 
+  // Football-pitch markings on the green infield.
+  const pitch = useMemo(() => {
+    const px = dims.straight / 2 - 1;
+    const pz = innerR - 1.5;
+    const y = 0.06;
+    const rect: Array<[number, number, number]> = [
+      [-px, y, -pz],
+      [px, y, -pz],
+      [px, y, pz],
+      [-px, y, pz],
+      [-px, y, -pz],
+    ];
+    const half: Array<[number, number, number]> = [
+      [0, y, -pz],
+      [0, y, pz],
+    ];
+    const circle: Array<[number, number, number]> = Array.from({ length: 49 }, (_, i) => {
+      const a = (i / 48) * Math.PI * 2;
+      return [Math.cos(a) * 3.2, y, Math.sin(a) * 3.2];
+    });
+    return { rect, half, circle };
+  }, [dims.straight, innerR]);
+
   return (
     <group>
       {/* Grass ground / infield. */}
@@ -90,7 +113,7 @@ export function OvalTrack({ dims, laneCount }: OvalTrackProps) {
         position={[0, 0.02, 0]}
         geometry={trackGeo}
         receiveShadow
-        material={getToonMaterial(CLAY)}
+        material={getToonMaterial(TRACK)}
         dispose={null}
       />
 
@@ -98,6 +121,11 @@ export function OvalTrack({ dims, laneCount }: OvalTrackProps) {
       {laneLines.map((pts, i) => (
         <Line key={i} points={pts} color="#f6f4ec" lineWidth={2} transparent opacity={0.85} />
       ))}
+
+      {/* Football-pitch markings on the infield. */}
+      <Line points={pitch.rect} color="#eef5ee" lineWidth={2} transparent opacity={0.65} />
+      <Line points={pitch.half} color="#eef5ee" lineWidth={2} transparent opacity={0.65} />
+      <Line points={pitch.circle} color="#eef5ee" lineWidth={2} transparent opacity={0.65} />
 
       {/* Checkered start / finish line. */}
       {checkers.cells.map((c, i) => (

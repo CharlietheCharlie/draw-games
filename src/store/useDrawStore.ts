@@ -55,6 +55,8 @@ export interface DrawStore {
   paused: boolean;
   /** Finishing order of the previous race, so each new draw is guaranteed different. */
   lastRanking: string[] | null;
+  /** Scene time of day. */
+  timeOfDay: 'day' | 'night';
 
   // participant editing
   addParticipant: (name?: string) => void;
@@ -78,6 +80,7 @@ export interface DrawStore {
   /** Alias of {@link start} — draw again with a new (different) outcome. */
   replay: () => void;
   togglePause: () => void;
+  toggleTimeOfDay: () => void;
 
   // camera
   setCameraShot: (key: string | null) => void;
@@ -134,6 +137,7 @@ export const useDrawStore = create<DrawStore>((set, get) => ({
   cameraShotKey: null,
   paused: false,
   lastRanking: null,
+  timeOfDay: 'day',
 
   addParticipant: (name) => {
     const { participants, phase } = get();
@@ -221,6 +225,8 @@ export const useDrawStore = create<DrawStore>((set, get) => ({
   togglePause: () => {
     if (get().phase === 'running') set({ paused: !get().paused });
   },
+
+  toggleTimeOfDay: () => set({ timeOfDay: get().timeOfDay === 'day' ? 'night' : 'day' }),
 
   setCameraShot: (key) => set({ cameraShotKey: key }),
 }));

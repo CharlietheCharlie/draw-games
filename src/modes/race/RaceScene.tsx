@@ -11,11 +11,14 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ModeSceneProps } from '@/core/mode/GameMode';
-import { pointAtU } from '@/core/geometry/stadium';
+import { pointAtU, laneRadius } from '@/core/geometry/stadium';
 import { generateAvatar, type AvatarDescriptor } from '@/core/character/descriptor';
 import { LANE_COLORS } from '@/core/character/palettes';
+import { useDrawStore } from '@/store/useDrawStore';
 import { Avatar } from '@/render/Avatar';
 import { NameTag } from '@/render/NameTag';
+import { StadiumEnv } from '@/shell/StadiumEnv';
+import { Jumbotron } from '@/shell/Jumbotron';
 import { OvalTrack } from './OvalTrack';
 import { STADIUM } from './raceTuning';
 import type { RaceState, RunnerViz } from './raceState';
@@ -36,6 +39,7 @@ function Runner({
   rank,
   cheer,
   showTag,
+  paused,
 }: {
   view: RunnerViz;
   state: RaceState;
@@ -45,6 +49,7 @@ function Runner({
   rank?: number;
   cheer?: boolean;
   showTag: boolean;
+  paused: boolean;
 }) {
   const group = useRef<THREE.Group>(null);
   const gait = useRef(0);
@@ -62,13 +67,18 @@ function Runner({
 
   return (
     <group ref={group}>
-      <Avatar descriptor={descriptor} gaitRef={gait} cheer={cheer} />
+      <Avatar descriptor={descriptor} gaitRef={gait} cheer={cheer} paused={paused} />
       {showTag && <NameTag name={name} color={color} y={2.35} rank={rank} />}
     </group>
   );
 }
 
 export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceState>) {
+  const night = useDrawStore((s) => s.timeOfDay === 'night');
+  const paused = useDrawStore((s) => s.paused);
+  const outerR = laneRadius(STADIUM, state.displayLanes - 1) + STADIUM.laneWidth / 2;
+  const jumboPos: [number, number, number] = [STADIUM.straight / 2 + outerR + 6, 13, 0];
+
   const avatars = useMemo<AvatarData[]>(
     () =>
       participants.map((p) => ({
@@ -91,6 +101,8 @@ export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceSta
   return (
     <group>
       <OvalTrack dims={STADIUM} laneCount={state.displayLanes} />
+      <StadiumEnv dims={STADIUM} laneCount={state.displayLanes} night={night} />
+      <Jumbotron state={state} position={jumboPos} />
       {avatars.map((a) => {
         const view = viewById.get(a.id);
         if (!view) return null;
@@ -106,6 +118,7 @@ export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceSta
             rank={phase === 'result' ? rank + 1 : undefined}
             cheer={phase === 'result' && rank === 0}
             showTag={phase !== 'result'}
+            paused={paused}
           />
         );
       })}

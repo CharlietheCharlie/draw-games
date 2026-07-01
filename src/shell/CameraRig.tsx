@@ -3,9 +3,11 @@
 /**
  * The single, cinematic camera. The active mode's CameraDirector describes where
  * to look; drei's CameraControls damps toward it (smooth transitions for free).
- * During countdown/running the camera is fully scripted (user input disabled);
- * during setup/result the user may freely orbit/zoom to inspect the scene and
- * the podium. Honors prefers-reduced-motion by holding a static overview.
+ *
+ * The camera is fully SCRIPTED only during countdown/running while NOT paused.
+ * In every other state — setup, result, and while PAUSED — the user may freely
+ * orbit/zoom, and the camera-angle buttons still work (a chosen angle is applied
+ * once, then the user can drag from there). Honors prefers-reduced-motion.
  */
 import { useMemo, useRef, type ComponentRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -24,10 +26,13 @@ export function CameraRig() {
   const state = useDrawStore((s) => s.state);
   const result = useDrawStore((s) => s.result);
   const shotKey = useDrawStore((s) => s.cameraShotKey);
+  const paused = useDrawStore((s) => s.paused);
   const mode = useMemo(() => getMode(modeId), [modeId]);
   const reduced = useReducedMotion();
 
   const lastPhase = useRef<string | null>(null);
+  const lastPaused = useRef(false);
+  const lastShot = useRef<string | null | undefined>(undefined);
   const phaseStart = useRef(0);
 
   const applyShot = (shot: CameraShot) => {
@@ -46,27 +51,45 @@ export function CameraRig() {
     const elapsed = st.clock.elapsedTime - phaseStart.current;
     const ctx = { state, phase, result, elapsed } as const;
     const director = mode.camera;
+    const scripted = (phase === 'countdown' || phase === 'running') && !paused;
 
-    // On phase entry: set input mode + do a one-time framing for static phases.
+    const shotForKey = (key: string | null): CameraShot => {
+      if (key) {
+        const named = director.namedShots(state);
+        return named[key] ?? director.getShot(ctx);
+      }
+      return director.getShot(ctx);
+    };
+
+    // Phase change: set input mode + a one-time framing.
     if (phase !== lastPhase.current) {
       lastPhase.current = phase;
+      lastPaused.current = paused;
+      lastShot.current = shotKey;
       phaseStart.current = st.clock.elapsedTime;
-      // Free orbit while setting up or admiring the result; scripted otherwise.
-      c.enabled = phase === 'setup' || phase === 'result';
-      applyShot(director.getShot(ctx));
+      c.enabled = !scripted;
+      applyShot(shotForKey(shotKey));
       return;
     }
 
-    // While running, the camera tracks continuously.
-    if (phase === 'running') {
-      const named = director.namedShots(state);
-      let shot: CameraShot;
-      if (reduced) shot = named.overview ?? director.getShot(ctx);
-      else if (shotKey && named[shotKey]) shot = named[shotKey]!;
-      else shot = director.getShot(ctx);
+    // Pause toggled: hand control to / take control from the user.
+    if (paused !== lastPaused.current) {
+      lastPaused.current = paused;
+      c.enabled = !scripted;
+    }
+
+    // User picked a camera angle (works in any state, including paused).
+    if (shotKey !== lastShot.current) {
+      lastShot.current = shotKey;
+      applyShot(shotForKey(shotKey));
+    }
+
+    // Continuous tracking only while actively scripted.
+    if (scripted) {
+      const shot = reduced ? director.namedShots(state).overview ?? director.getShot(ctx) : shotForKey(shotKey);
       applyShot(shot);
     }
   });
 
-  return <CameraControls ref={controls} makeDefault smoothTime={DEFAULT_SMOOTH} minDistance={5} maxDistance={260} />;
+  return <CameraControls ref={controls} makeDefault smoothTime={DEFAULT_SMOOTH} minDistance={5} maxDistance={320} />;
 }

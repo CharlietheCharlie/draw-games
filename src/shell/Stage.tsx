@@ -8,11 +8,9 @@
  */
 import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { AdaptiveDpr, SoftShadows } from '@react-three/drei';
+import { AdaptiveDpr } from '@react-three/drei';
 import { isWebGLAvailable } from '@/lib/webgl';
-import { useDrawStore } from '@/store/useDrawStore';
-import { Lighting } from './Lighting';
-import { GradientSky } from './GradientSky';
+import { SceneBackdrop } from './SceneBackdrop';
 import { ActiveMode } from './ActiveMode';
 import { CameraRig } from './CameraRig';
 import { WebGLFallback } from './WebGLFallback';
@@ -21,23 +19,19 @@ export function Stage() {
   // Stage only renders on the client (its parent is dynamic ssr:false), so it's
   // safe to detect WebGL in the initializer — no effect / setState churn.
   const [webgl] = useState<boolean>(() => isWebGLAvailable());
-  const paused = useDrawStore((s) => s.paused);
 
   if (!webgl) return <WebGLFallback />;
 
   return (
     <Canvas
-      shadows
+      // "percentage" = three's built-in PCF soft shadows (compatible with this
+      // three version; drei <SoftShadows> PCSS is not, so we avoid it).
+      shadows="percentage"
       dpr={[1, 2]}
-      // Pausing freezes the whole render loop — a true freeze-frame.
-      frameloop={paused ? 'never' : 'always'}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
-      camera={{ position: [0, 46, 62], fov: 45, near: 0.1, far: 600 }}
+      camera={{ position: [0, 46, 62], fov: 45, near: 0.1, far: 700 }}
     >
-      <fog attach="fog" args={['#eaf6ef', 150, 360]} />
-      <SoftShadows size={18} samples={12} focus={0.85} />
-      <GradientSky />
-      <Lighting />
+      <SceneBackdrop />
       <Suspense fallback={null}>
         <ActiveMode />
       </Suspense>
