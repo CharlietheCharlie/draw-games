@@ -27,6 +27,10 @@ function reindex(list: Participant[]): Participant[] {
   return list.map((p, i) => ({ ...p, lane: i }));
 }
 
+function sameOrder(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i]);
+}
+
 const DEFAULT_NAMES = ['小明', '小華', '小美', '阿強', '曉琪'];
 
 function defaultParticipants(): Participant[] {
@@ -47,6 +51,10 @@ export interface DrawStore {
   countdown: number | null;
   /** Selected named camera shot, or null for the mode's automatic direction. */
   cameraShotKey: string | null;
+  /** True while the race is paused mid-run (freezes the whole render loop). */
+  paused: boolean;
+  /** Finishing order of the previous race, so each new draw is guaranteed different. */
+  lastRanking: string[] | null;
 
   // participant editing
   addParticipant: (name?: string) => void;
@@ -61,14 +69,48 @@ export interface DrawStore {
 
   // draw lifecycle
   rebuildPreview: () => void;
+  /** Start a brand-new race: auto-picks a fresh seed, guaranteed to differ from
+   *  the previous result. Used by both the Start button and "draw again". */
   start: () => void;
   tickCountdown: () => void;
   finish: (ranking: string[]) => void;
   reset: () => void;
+  /** Alias of {@link start} — draw again with a new (different) outcome. */
   replay: () => void;
+  togglePause: () => void;
 
   // camera
   setCameraShot: (key: string | null) => void;
+}
+
+/** Begin a fresh race with an auto seed whose order differs from `lastRanking`. */
+function beginFreshRace(
+  get: () => DrawStore,
+  set: (partial: Partial<DrawStore>) => void,
+): void {
+  const { participants, activeModeId, lastRanking } = get();
+  if (participants.length < 2 || !hasMode(activeModeId)) return;
+
+  let seed = randomSeed();
+  let run = buildRun(participants, seed, activeModeId);
+  let tries = 0;
+  // Re-roll until the finishing order differs from the previous race.
+  while (lastRanking && sameOrder(run.result.rankedIds, lastRanking) && tries < 40) {
+    seed = randomSeed();
+    run = buildRun(participants, seed, activeModeId);
+    tries++;
+  }
+
+  set({
+    seed,
+    result: run.result,
+    state: run.state,
+    ranking: null,
+    phase: 'countdown',
+    countdown: 3,
+    paused: false,
+    cameraShotKey: null,
+  });
 }
 
 /** Build the fair result + live mode state for the current inputs. */
@@ -90,6 +132,8 @@ export const useDrawStore = create<DrawStore>((set, get) => ({
   ranking: null,
   countdown: null,
   cameraShotKey: null,
+  paused: false,
+  lastRanking: null,
 
   addParticipant: (name) => {
     const { participants, phase } = get();
@@ -147,12 +191,7 @@ export const useDrawStore = create<DrawStore>((set, get) => ({
     set({ result: run.result, state: run.state, ranking: null });
   },
 
-  start: () => {
-    const { participants, seed, activeModeId, phase } = get();
-    if (phase !== 'setup' || participants.length < 2 || !hasMode(activeModeId)) return;
-    const run = buildRun(participants, seed, activeModeId);
-    set({ result: run.result, state: run.state, ranking: null, phase: 'countdown', countdown: 3 });
-  },
+  start: () => beginFreshRace(get, set),
 
   tickCountdown: () => {
     const { countdown, phase } = get();
@@ -163,12 +202,12 @@ export const useDrawStore = create<DrawStore>((set, get) => ({
 
   finish: (ranking) => {
     if (get().phase !== 'running') return;
-    set({ phase: 'result', ranking, cameraShotKey: null });
+    set({ phase: 'result', ranking, cameraShotKey: null, paused: false, lastRanking: ranking });
   },
 
   reset: () => {
     const { participants, seed, activeModeId } = get();
-    set({ phase: 'setup', ranking: null, countdown: null, cameraShotKey: null });
+    set({ phase: 'setup', ranking: null, countdown: null, cameraShotKey: null, paused: false });
     if (hasMode(activeModeId) && participants.length > 0) {
       const run = buildRun(participants, seed, activeModeId);
       set({ result: run.result, state: run.state });
@@ -177,11 +216,10 @@ export const useDrawStore = create<DrawStore>((set, get) => ({
     }
   },
 
-  replay: () => {
-    const { participants, seed, activeModeId } = get();
-    if (!hasMode(activeModeId) || participants.length < 2) return;
-    const run = buildRun(participants, seed, activeModeId);
-    set({ result: run.result, state: run.state, ranking: null, phase: 'countdown', countdown: 3 });
+  replay: () => beginFreshRace(get, set),
+
+  togglePause: () => {
+    if (get().phase === 'running') set({ paused: !get().paused });
   },
 
   setCameraShot: (key) => set({ cameraShotKey: key }),

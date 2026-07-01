@@ -1,6 +1,6 @@
 'use client';
 
-/** In-scene overlay: start button, countdown, camera-angle switcher, stop. */
+/** In-scene overlay: start button, countdown, camera switcher, pause/stop. */
 import { useDrawStore } from '@/store/useDrawStore';
 
 const CAM_OPTIONS: Array<{ key: string | null; label: string }> = [
@@ -14,8 +14,10 @@ export function HUD() {
   const phase = useDrawStore((s) => s.phase);
   const countdown = useDrawStore((s) => s.countdown);
   const participants = useDrawStore((s) => s.participants);
+  const paused = useDrawStore((s) => s.paused);
   const start = useDrawStore((s) => s.start);
   const reset = useDrawStore((s) => s.reset);
+  const togglePause = useDrawStore((s) => s.togglePause);
   const cameraShotKey = useDrawStore((s) => s.cameraShotKey);
   const setCameraShot = useDrawStore((s) => s.setCameraShot);
 
@@ -25,7 +27,8 @@ export function HUD() {
     <div className="hud">
       <div className="hud-top">
         {phase === 'countdown' && countdown != null && <div className="countdown">{countdown}</div>}
-        {phase === 'running' && (
+        {phase === 'running' && paused && <div className="paused-badge">⏸ 已暫停</div>}
+        {phase === 'running' && !paused && (
           <div className="cam-btns" role="group" aria-label="鏡頭視角">
             {CAM_OPTIONS.map((o) => (
               <button
@@ -50,9 +53,14 @@ export function HUD() {
           </div>
         )}
         {phase === 'running' && (
-          <button className="btn btn-ghost" onClick={reset}>
-            停止
-          </button>
+          <>
+            <button className="btn btn-primary" onClick={togglePause}>
+              {paused ? '▶︎ 繼續' : '⏸ 暫停'}
+            </button>
+            <button className="btn btn-ghost" onClick={reset}>
+              停止
+            </button>
+          </>
         )}
       </div>
     </div>

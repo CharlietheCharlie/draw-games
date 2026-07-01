@@ -14,8 +14,6 @@ export function ParticipantPanel() {
   const rename = useDrawStore((s) => s.renameParticipant);
   const clear = useDrawStore((s) => s.clearParticipants);
   const seed = useDrawStore((s) => s.seed);
-  const setSeed = useDrawStore((s) => s.setSeed);
-  const randomizeSeed = useDrawStore((s) => s.randomizeSeed);
 
   const editable = phase === 'setup';
   const max = getMode(activeModeId).maxParticipants;
@@ -23,21 +21,10 @@ export function ParticipantPanel() {
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <p className="section-title">隨機種子 Seed</p>
-        <div className="seed-row">
-          <input
-            type="text"
-            value={seed}
-            disabled={!editable}
-            onChange={(e) => setSeed(e.target.value)}
-            aria-label="隨機種子"
-          />
-          <button className="btn btn-ghost" disabled={!editable} onClick={randomizeSeed} title="換一個種子">
-            🎲
-          </button>
-        </div>
+        <p className="section-title">本場種子 Seed</p>
+        <div className="seed-chip">{seed}</div>
         <p className="count-hint" style={{ marginTop: 6 }}>
-          相同種子＝完全相同的結果（可重播、可驗證公平性）
+          每次開始都會自動換一組，確保每場結果都不同（可驗證公平性）
         </p>
       </div>
 

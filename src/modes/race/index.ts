@@ -11,7 +11,7 @@ import { raceCamera } from './raceCamera';
 
 export const raceMode: GameMode<RaceState> = {
   id: 'race',
-  label: '操場賽跑 · Track Race',
+  label: '🏃 操場賽跑 · Track Race',
   maxParticipants: MAX_PARTICIPANTS,
   createState: createRaceState,
   step: stepRace,

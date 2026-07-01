@@ -1,8 +1,12 @@
 /**
  * Camera director for the race: named angles the user can cycle, plus automatic
- * shots per phase — an establishing overview, a start-line angle, a leader-
- * following broadcast shot while running, and an auto podium framing of the top
- * three finishers on the result phase. Pure (returns plain tuples).
+ * shots per phase — an establishing overview, a start-line angle, a smooth
+ * broadcast shot that pans with the pack while running, and an auto podium
+ * framing of the top finishers on the result phase. Pure (returns plain tuples).
+ *
+ * All running shots track a CONTINUOUS focus (the pack's front by arc length,
+ * interpolated by render alpha) rather than snapping to whichever runner is
+ * momentarily ahead — so the camera never jitters when the lead changes.
  */
 import type { CameraDirector, CameraShot } from '@/core/mode/CameraDirector';
 import { laneRadius, pointAtU, trackExtent } from '@/core/geometry/stadium';
@@ -13,53 +17,92 @@ function outerRadius(state: RaceState): number {
   return laneRadius(STADIUM, state.displayLanes - 1) + STADIUM.laneWidth;
 }
 
+/** Interpolated distance of the front-most runner (continuous in time). */
+function frontU(state: RaceState): number {
+  let max = 0;
+  for (const r of state.runners) {
+    const u = r.prevPosition + (r.position - r.prevPosition) * state.alpha;
+    if (u > max) max = u;
+  }
+  return max;
+}
+
+const MID_LANE = (state: RaceState) => (state.displayLanes - 1) / 2;
+
 function overview(state: RaceState): CameraShot {
   const ext = trackExtent(STADIUM.straight, outerRadius(state));
   const d = Math.max(ext.x, ext.z);
-  return { position: [0, d * 1.2, d * 1.55], target: [0, 1.5, 0], smoothTime: 0.85 };
+  return { position: [0, d * 1.2, d * 1.55], target: [0, 1.5, 0], smoothTime: 0.9 };
 }
 
+/** Smooth broadcast: orbit the outside of the track, tracking the pack front. */
+function broadcast(state: RaceState): CameraShot {
+  const pt = pointAtU(STADIUM, MID_LANE(state), frontU(state));
+  const len = Math.hypot(pt.x, pt.z) || 1;
+  const nx = pt.x / len; // outward normal (track is centred at origin)
+  const nz = pt.z / len;
+  const dist = outerRadius(state) * 0.7 + 14;
+  return {
+    position: [pt.x + nx * dist, 13, pt.z + nz * dist],
+    target: [pt.x * 0.6, 1.4, pt.z * 0.6],
+    smoothTime: 0.75,
+  };
+}
+
+/** Chase cam just behind the leader. */
 function leader(state: RaceState): CameraShot {
-  const lead = state.runners.reduce((a, b) => (b.position > a.position ? b : a), state.runners[0]!);
-  const pt = pointAtU(STADIUM, lead.lane, lead.position);
+  const u = frontU(state);
+  const pt = pointAtU(STADIUM, MID_LANE(state), u);
   const fx = Math.sin(pt.heading);
   const fz = Math.cos(pt.heading);
   return {
-    position: [pt.x - fx * 11, 6.5, pt.z - fz * 11],
-    target: [pt.x + fx * 4, 1.3, pt.z + fz * 4],
-    smoothTime: 0.4,
+    position: [pt.x - fx * 12, 6.5, pt.z - fz * 12],
+    target: [pt.x + fx * 5, 1.3, pt.z + fz * 5],
+    smoothTime: 0.5,
   };
 }
 
 function trackside(state: RaceState): CameraShot {
   const r = laneRadius(STADIUM, 0);
-  return {
-    position: [0, 5.5, -(outerRadius(state) + 16)],
-    target: [0, 1.5, -r],
-    smoothTime: 0.6,
-  };
+  return { position: [0, 6, -(outerRadius(state) + 18)], target: [0, 1.5, -r], smoothTime: 0.7 };
 }
 
 function startLine(): CameraShot {
   const p = pointAtU(STADIUM, 0, 0);
-  return {
-    position: [p.x - 7, 3.2, p.z - 9],
-    target: [p.x + 8, 1.4, p.z + 3],
-    smoothTime: 0.6,
-  };
+  return { position: [p.x - 7, 3.2, p.z - 9], target: [p.x + 8, 1.4, p.z + 3], smoothTime: 0.7 };
 }
 
-function podium(state: RaceState): CameraShot {
-  const top = raceRanking(state).slice(0, 3);
-  const pts = top.map((id) => {
-    const r = state.runners.find((x) => x.id === id)!;
-    return pointAtU(STADIUM, r.lane, r.position);
-  });
-  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-  const cz = pts.reduce((s, p) => s + p.z, 0) / pts.length;
-  // Finishers coast onto the front straight (heading ≈ +X); frame them from
-  // ahead and to the side, slightly above.
-  return { position: [cx + 11, 5.5, cz - 9], target: [cx, 1.3, cz], smoothTime: 0.9 };
+/**
+ * Tight close-up on the winner as they cheer. Framed as a 3/4 front shot with
+ * the winner biased to the LEFT of frame (so the result panel, docked right,
+ * never covers them).
+ */
+function winnerCloseup(state: RaceState): CameraShot {
+  const winnerId = raceRanking(state)[0];
+  const r = state.runners.find((x) => x.id === winnerId) ?? state.runners[0]!;
+  const u = r.prevPosition + (r.position - r.prevPosition) * state.alpha;
+  const pt = pointAtU(STADIUM, r.lane, u);
+  const fx = Math.sin(pt.heading);
+  const fz = Math.cos(pt.heading);
+
+  // Camera ahead of and to one side of the winner (3/4 view), looking back.
+  const px = pt.x + fx * 5.5 + fz * 3.0;
+  const pz = pt.z + fz * 5.5 - fx * 3.0;
+  const P: [number, number, number] = [px, 3.0, pz];
+
+  // Look direction, then its screen-right = normalize(cross(forward, up)).
+  let dx = pt.x - px;
+  let dz = pt.z - pz;
+  const dl = Math.hypot(dx, dz) || 1;
+  dx /= dl;
+  dz /= dl;
+  const rx = -dz; // cross(forward, up) in XZ
+  const rz = dx;
+
+  // Shift the aim toward screen-right → the winner sits toward the left.
+  const bias = 2.6;
+  const T: [number, number, number] = [pt.x + rx * bias, 1.05, pt.z + rz * bias];
+  return { position: P, target: T, smoothTime: 0.95 };
 }
 
 export const raceCamera: CameraDirector<RaceState> = {
@@ -70,14 +113,15 @@ export const raceCamera: CameraDirector<RaceState> = {
       case 'countdown':
         return startLine();
       case 'running':
-        return leader(state);
+        return broadcast(state);
       case 'result':
-        return podium(state);
+        return winnerCloseup(state);
     }
   },
   namedShots(state) {
     return {
       overview: overview(state),
+      broadcast: broadcast(state),
       leader: leader(state),
       trackside: trackside(state),
     } satisfies Record<string, CameraShot>;

@@ -15,6 +15,7 @@ import { SKIN, HAIR, OUTFIT, ACCESSORY_COLOR } from './palettes';
 
 export type HairStyle = 'short' | 'buzz' | 'long' | 'ponytail' | 'bun';
 export type Accessory = 'none' | 'headband' | 'cap' | 'glasses';
+export type Expression = 'happy' | 'cool' | 'determined' | 'sweet';
 
 export interface AvatarDescriptor {
   gender: Gender;
@@ -27,6 +28,8 @@ export interface AvatarDescriptor {
   /** Shorts / skirt colour. */
   bottom: string;
   accessory: Accessory;
+  /** Facial expression — gives each character a bit of personality. */
+  expression: Expression;
   /** Female avatars render a skirt block instead of separated shorts. */
   skirt: boolean;
   /**
@@ -60,6 +63,7 @@ export function generateAvatar(participantId: string, seed: string): AvatarDescr
     bottom: pick(rnd, OUTFIT),
     // Bias toward "none" so accessories stay special (2/5 chance of an accessory).
     accessory: pick(rnd, ['none', 'none', 'none', 'headband', 'cap', 'glasses'] as const),
+    expression: pick(rnd, ['happy', 'happy', 'cool', 'determined', 'sweet'] as const),
     skirt: female,
     // Female: narrower shoulders + slightly shorter; male: broader shoulders.
     bodyScale: female ? [0.82, 0.97, 0.9] : [1.08, 1.0, 1.0],

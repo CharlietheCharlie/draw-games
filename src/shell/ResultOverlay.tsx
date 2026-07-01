@@ -21,7 +21,8 @@ export function ResultOverlay() {
     <div className="hud">
       <div className="result-card" role="dialog" aria-label="抽籤結果">
         <div className="winner-badge">
-          <div className="label">🏆 中籤者 WINNER</div>
+          <div className="crown">🏆</div>
+          <div className="label">中籤者 WINNER</div>
           <div className="name">{winner ? nameOf(winner) : '—'}</div>
         </div>
 
@@ -37,7 +38,7 @@ export function ResultOverlay() {
 
         <div className="result-actions">
           <button className="btn btn-primary btn-block" onClick={replay}>
-            🔁 重播這場
+            🎲 再抽一次
           </button>
           <button className="btn btn-block" onClick={reset}>
             ✏️ 重新設定

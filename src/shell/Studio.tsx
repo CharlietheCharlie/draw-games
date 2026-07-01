@@ -39,8 +39,11 @@ export function Studio() {
     <div className="studio">
       <aside className="panel">
         <div className="brand">
-          <h1>🏟️ 賽跑抽籤</h1>
-          <p>一場公平的操場賽跑，跑第一的就是中籤者</p>
+          <div className="logo">🏟️</div>
+          <div>
+            <h1>賽跑抽籤</h1>
+            <p>一場公平的操場賽跑，跑第一的就是中籤者</p>
+          </div>
         </div>
         <ModePicker />
         <ParticipantPanel />

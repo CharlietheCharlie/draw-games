@@ -29,11 +29,21 @@ export function ActiveMode() {
   }, [state, stepper]);
 
   useFrame((_, delta) => {
-    if (phase !== 'running' || !state) return;
-    stepper.tick(delta, (dt) => mode.step(state, dt));
-    if (!finishedRef.current && mode.isFinished(state)) {
+    // Read the live state imperatively (not the render binding) so per-frame
+    // mutation stays outside React's reactive graph.
+    const live = useDrawStore.getState().state;
+    if (!live) return;
+    // Publish the render-interpolation factor so the Scene can lerp between
+    // fixed steps and stay smooth at any refresh rate (kills the judder/tremble).
+    const withAlpha = live as { alpha?: number };
+    if (phase !== 'running') {
+      withAlpha.alpha = 1;
+      return;
+    }
+    withAlpha.alpha = stepper.tick(delta, (dt) => mode.step(live, dt));
+    if (!finishedRef.current && mode.isFinished(live)) {
       finishedRef.current = true;
-      useDrawStore.getState().finish(mode.getRanking(state));
+      useDrawStore.getState().finish(mode.getRanking(live));
     }
   });
 

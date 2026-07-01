@@ -22,6 +22,8 @@ export interface RunnerViz {
   lane: number;
   /** Distance along the lane in laps (0 → start line; may exceed 1 on overrun). */
   position: number;
+  /** Distance at the previous fixed step — used for render interpolation. */
+  prevPosition: number;
   /** Running-gait intensity 0..1 for the avatar's leg/arm swing. */
   gait: number;
   /** True once this runner has crossed the line. */
@@ -40,6 +42,12 @@ export interface RaceState {
   trajectories: Choreo[];
   displayLanes: number;
   finished: boolean;
+  /**
+   * Render-interpolation factor in [0,1]: how far the current frame sits between
+   * the previous and current fixed step. The renderer lerps runner positions by
+   * this to stay perfectly smooth regardless of display refresh rate.
+   */
+  alpha: number;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -70,7 +78,15 @@ export function createRaceState({ participants, result, seed }: CreateStateArgs)
     const rr = rank < 0 ? n - 1 : rank;
     const choreo = makeChoreo(deriveStream(seed, `viz:${p.id}`), times[rr]!, overrunByRank(rr));
     trajectories.push(choreo);
-    runners.push({ id: p.id, lane: p.lane, position: 0, gait: 0, finished: false, finishAt: choreo.finishAt });
+    runners.push({
+      id: p.id,
+      lane: p.lane,
+      position: 0,
+      prevPosition: 0,
+      gait: 0,
+      finished: false,
+      finishAt: choreo.finishAt,
+    });
   }
 
   return {
@@ -82,6 +98,7 @@ export function createRaceState({ participants, result, seed }: CreateStateArgs)
     trajectories,
     displayLanes: clamp(Math.max(n, MIN_DISPLAY_LANES), 1, 12),
     finished: false,
+    alpha: 1,
   };
 }
 
@@ -96,6 +113,7 @@ export function stepRace(state: RaceState, fixedDtSec: number): void {
     const prev = runner.position;
     const pos = traj.positionAt(state.t);
     const speed = dtN > 0 ? (pos - prev) / dtN : 0;
+    runner.prevPosition = prev;
     runner.position = pos;
     runner.gait = clamp(speed / REF_GAIT_SPEED, 0, 1);
     runner.finished = state.t >= traj.finishAt;
