@@ -85,10 +85,10 @@ function winnerCloseup(state: RaceState): CameraShot {
   const fx = Math.sin(pt.heading);
   const fz = Math.cos(pt.heading);
 
-  // Camera ahead of and to one side of the winner (3/4 view), looking back.
-  const px = pt.x + fx * 5.5 + fz * 3.0;
-  const pz = pt.z + fz * 5.5 - fx * 3.0;
-  const P: [number, number, number] = [px, 3.0, pz];
+  // Camera close, ahead of and to one side of the winner (tight 3/4 view).
+  const px = pt.x + fx * 4.1 + fz * 2.0;
+  const pz = pt.z + fz * 4.1 - fx * 2.0;
+  const P: [number, number, number] = [px, 2.6, pz];
 
   // Look direction, then its screen-right = normalize(cross(forward, up)).
   let dx = pt.x - px;
@@ -99,10 +99,11 @@ function winnerCloseup(state: RaceState): CameraShot {
   const rx = -dz; // cross(forward, up) in XZ
   const rz = dx;
 
-  // Shift the aim toward screen-right → the winner sits toward the left.
-  const bias = 2.6;
-  const T: [number, number, number] = [pt.x + rx * bias, 1.05, pt.z + rz * bias];
-  return { position: P, target: T, smoothTime: 0.95 };
+  // Shift the aim slightly toward screen-right → the winner sits a touch left of
+  // centre (clear of the result panel on the right) but stays the clear subject.
+  const bias = 1.5;
+  const T: [number, number, number] = [pt.x + rx * bias, 1.45, pt.z + rz * bias];
+  return { position: P, target: T, smoothTime: 0.9 };
 }
 
 export const raceCamera: CameraDirector<RaceState> = {

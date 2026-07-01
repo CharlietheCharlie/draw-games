@@ -53,6 +53,7 @@ function Runner({
   action,
   showTag,
   paused,
+  emphasize,
 }: {
   view: RunnerViz;
   state: RaceState;
@@ -63,6 +64,7 @@ function Runner({
   action: AvatarAction;
   showTag: boolean;
   paused: boolean;
+  emphasize?: boolean;
 }) {
   const group = useRef<THREE.Group>(null);
   const gait = useRef(0);
@@ -79,7 +81,7 @@ function Runner({
   });
 
   return (
-    <group ref={group}>
+    <group ref={group} scale={emphasize ? 1.24 : 1}>
       <Avatar descriptor={descriptor} action={action} gaitRef={gait} paused={paused} />
       {showTag && <NameTag name={name} color={color} y={2.35} rank={rank} />}
     </group>
@@ -149,11 +151,50 @@ function OcclusionFader({ state }: { state: RaceState }) {
   return null;
 }
 
+/** Highlights the winner: a glowing ground ring, a translucent light beam, and
+ *  a warm point light — so the champion clearly stands out at the result. */
+function WinnerHighlight({ pos }: { pos: [number, number, number] }) {
+  const ring = useRef<THREE.Mesh>(null);
+  const beam = useRef<THREE.Mesh>(null);
+  useFrame((st) => {
+    const t = st.clock.elapsedTime;
+    if (ring.current) {
+      const s = 1 + Math.sin(t * 3.5) * 0.12;
+      ring.current.scale.set(s, s, 1);
+    }
+    if (beam.current) beam.current.rotation.y = t * 0.4;
+  });
+  return (
+    <group position={pos}>
+      <pointLight position={[0, 5, 0]} intensity={1.7} distance={16} decay={0} color="#fff2cf" />
+      <mesh ref={ring} position={[0, 0.09, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.95, 1.4, 48]} />
+        <meshBasicMaterial color="#ffd34d" transparent opacity={0.75} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh ref={beam} position={[0, 5, 0]}>
+        <coneGeometry args={[2.2, 10, 28, 1, true]} />
+        <meshBasicMaterial
+          color="#ffe9a8"
+          transparent
+          opacity={0.14}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceState>) {
   const night = useDrawStore((s) => s.timeOfDay === 'night');
   const paused = useDrawStore((s) => s.paused);
   const outerR = laneRadius(STADIUM, state.displayLanes - 1) + STADIUM.laneWidth / 2;
   const jumboPos: [number, number, number] = [STADIUM.straight / 2 + outerR + 6, 13, 0];
+
+  // Winner position (for the result-screen highlight).
+  const winner = phase === 'result' ? state.runners.find((r) => r.id === state.rankedIds[0]) : undefined;
+  const winnerPt = winner ? pointAtU(STADIUM, winner.lane, winner.position) : null;
 
   const avatars = useMemo<AvatarData[]>(
     () =>
@@ -180,6 +221,7 @@ export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceSta
       <StadiumEnv dims={STADIUM} laneCount={state.displayLanes} night={night} />
       <Jumbotron state={state} position={jumboPos} />
       <OcclusionFader state={state} />
+      {winnerPt && <WinnerHighlight pos={[winnerPt.x, 0, winnerPt.z]} />}
       {avatars.map((a) => {
         const view = viewById.get(a.id);
         if (!view) return null;
@@ -196,6 +238,7 @@ export function RaceScene({ state, participants, phase }: ModeSceneProps<RaceSta
             action={runnerAction(phase, rank, a.id)}
             showTag={phase !== 'result'}
             paused={paused}
+            emphasize={phase === 'result' && rank === 0}
           />
         );
       })}
