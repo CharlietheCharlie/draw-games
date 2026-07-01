@@ -15,6 +15,15 @@ import { pointAtU } from '@/core/geometry/stadium';
 import { STADIUM } from '@/modes/race/raceTuning';
 import type { RaceState } from '@/modes/race/raceState';
 
+/**
+ * The feed re-renders the whole scene into an off-screen target — the single
+ * most expensive per-frame op in the app. Cap it at ~30fps (time-based, so it's
+ * identical on 60/120Hz displays): the board is a small, damped background
+ * element, so a half-rate feed is visually indistinguishable while roughly
+ * halving this extra full-scene draw pass.
+ */
+const FEED_INTERVAL = 1 / 30;
+
 export interface JumbotronProps {
   state: RaceState;
   position: [number, number, number];
@@ -27,6 +36,7 @@ export function Jumbotron({ state, position, width = 22 }: JumbotronProps) {
   const cam = useRef<THREE.PerspectiveCamera>(null);
   const board = useRef<THREE.Group>(null);
   const inited = useRef(false);
+  const feedAcc = useRef(0);
   const { gl, scene } = useThree();
 
   const desired = useMemo(() => new THREE.Vector3(), []);
@@ -61,6 +71,12 @@ export function Jumbotron({ state, position, width = 22 }: JumbotronProps) {
     c.lookAt(look);
     c.aspect = 16 / 9;
     c.updateProjectionMatrix();
+
+    // Throttle the expensive FBO pass to ~30fps (camera pose above still updates
+    // every frame, so the feed is always framed on the latest position).
+    feedAcc.current += delta;
+    if (feedAcc.current < FEED_INTERVAL) return;
+    feedAcc.current = 0;
 
     // Render the feed with the whole board hidden (no self-filming).
     g.visible = false;

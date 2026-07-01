@@ -10,6 +10,7 @@ import '@/modes/registerAll';
 import { useEffect } from 'react';
 import { useDrawStore } from '@/store/useDrawStore';
 import { Stage } from './Stage';
+import { SceneErrorBoundary } from './SceneErrorBoundary';
 import { ParticipantPanel } from './ParticipantPanel';
 import { HUD } from './HUD';
 import { ResultOverlay } from './ResultOverlay';
@@ -37,7 +38,9 @@ export function Studio() {
   return (
     <div className="studio">
       <main className="stage-area">
-        <Stage />
+        <SceneErrorBoundary>
+          <Stage />
+        </SceneErrorBoundary>
         <HUD />
         <ResultOverlay />
       </main>
