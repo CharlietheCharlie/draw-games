@@ -154,6 +154,13 @@ export function Avatar({
         rot(hipR, Math.max(0, -d) * 0.35);
         rot(kneeL, Math.max(0, d) * 0.55);
         rot(kneeR, Math.max(0, -d) * 0.55);
+      } else if (action === 'robot') {
+        // Marching knee-lift synced to the arm punches.
+        const beat = Math.floor(t * 2.4) % 4;
+        rot(hipL, beat === 0 ? 0.5 : 0);
+        rot(kneeL, beat === 0 ? 0.9 : 0);
+        rot(hipR, beat === 2 ? 0.5 : 0);
+        rot(kneeR, beat === 2 ? 0.9 : 0);
       } else {
         rot(hipL, 0);
         rot(hipR, 0);
@@ -211,13 +218,43 @@ export function Avatar({
         break;
       }
       case 'robot': {
-        const q = Math.round(Math.sin(t * 1.7) * 1.5) / 1.5;
-        const q2 = Math.round(Math.sin(t * 1.7 + Math.PI / 2) * 1.5) / 1.5;
-        rot(shoulderL, -1.5 + q * 0.8, 0, 0.1);
-        rot(shoulderR, -1.5 - q2 * 0.8, 0, -0.1);
-        rot(elbowL, -1.55);
-        rot(elbowR, -1.55);
-        bodyPose(0, (Math.round(Math.sin(t * 0.8) * 2) / 2) * 0.15, 0, 0);
+        // Big, hard-stepped robotic moves — a 4-pose cycle with wide arm angles.
+        const beat = Math.floor(t * 2.4) % 4;
+        let sl = -0.2;
+        let sr = -0.2;
+        let slz = 0.12;
+        let srz = -0.12;
+        let el = -1.55;
+        let er = -1.55;
+        let twist = 0;
+        let lean = 0;
+        if (beat === 0) {
+          sl = -2.75; // left arm punches straight up
+          slz = 0.05;
+          el = -0.2;
+          twist = 0.45;
+        } else if (beat === 1) {
+          slz = 1.45; // both arms thrown out to the sides
+          srz = -1.45;
+          el = -0.15;
+          er = -0.15;
+        } else if (beat === 2) {
+          sr = -2.75; // right arm punches straight up
+          srz = -0.05;
+          er = -0.2;
+          twist = -0.45;
+        } else {
+          sl = -1.65; // both arms forward, sharply bent
+          sr = -1.65;
+          el = -1.8;
+          er = -1.8;
+          lean = 0.1;
+        }
+        rot(shoulderL, sl, 0, slz);
+        rot(shoulderR, sr, 0, srz);
+        rot(elbowL, el);
+        rot(elbowR, er);
+        bodyPose(lean, twist, 0, 0);
         break;
       }
       case 'kneel': {
